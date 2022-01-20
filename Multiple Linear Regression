@@ -1,0 +1,282 @@
+
+############################## Multiple Linear Regression  ###############################################
+
+
+#Linear Regression
+
+##########################################################################################################
+# Set working directory
+
+setwd("H:/My Documents/TEACHING/Financial_Data_Analytics/MS_FINANCE/Class_Data")
+getwd()
+
+#Load the data file
+credit=read.csv("credit.csv",header=TRUE)
+
+
+#fix invokes edit on x and then 
+#assigns the new (edited) version of x in the user's workspace. 
+fix(credit) 
+
+#names of the variables in the data
+names(credit)
+
+#The database is attached to the R search path. 
+#so objects in the database can be accessed by simply giving their names.
+attach(credit)
+
+
+
+#########################################################################################################
+#########################################################################################################
+
+
+###### Create Gender dummy  ##############################################################################
+
+
+dim(credit)
+numrows=nrow(credit)
+
+gender_dummy<-matrix(nrow=numrows,ncol=1)
+head(gender_dummy)
+head(Gender)
+
+
+#######construct a dummy variable: gender_dummy=1 if Gender=Female; 0 if Gender=Male###########################
+
+for (i in 1:numrows)
+    {
+
+	if (Gender[i]=='Female') {
+   	gender_dummy[i,]=1
+	} else {
+   	gender_dummy[i,]=0
+	}
+}
+
+
+##Check wtether the dummy variables were created right
+head(gender_dummy)
+mean(gender_dummy)
+colnames(gender_dummy)="gender_dummy"
+
+
+
+
+#########################################################################################################
+#########################################################################################################
+
+
+
+### create a dummy variable for student #############################################################################
+
+#names of the variables in the data
+names(credit)
+
+dim(credit)
+numrows=nrow(credit)
+
+student_dummy<-matrix(nrow=numrows,ncol=1)
+head(student_dummy)
+
+#######construct a dummy variable: student_dummy=1 if Student=1; 0 otherwise     ###########################
+
+for (i in 1:numrows)
+    {
+
+	if (Student[i]=='Yes') {
+   	student_dummy[i,]=1
+	} else {
+   	student_dummy[i,]=0
+	}
+}
+
+
+##Check wtether the dummy variable was created right
+head(student_dummy)
+mean(student_dummy)
+colnames(student_dummy)="student_dummy"
+
+
+
+
+#######construct a dummy variable: married_dummy=1 if married=1; 0 otherwise     ###########################
+
+#names of the variables in the data
+names(credit)
+
+dim(credit)
+numrows=nrow(credit)
+
+married_dummy<-matrix(nrow=numrows,ncol=1)
+head(married_dummy)
+
+
+for (i in 1:numrows)
+    {
+
+	if (Married[i]=='Yes') {
+   	married_dummy[i,]=1
+	} else {
+   	married_dummy[i,]=0
+	}
+}
+
+
+##Check wtether the dummy variable was created right
+head(married_dummy)
+mean(married_dummy)
+colnames(married_dummy)="married_dummy"
+
+
+
+
+#######################################################################################################################
+#######################################################################################################################
+
+
+####################### SUMMARY STAT for  All Predictors ###################################################################
+
+library(fBasics)
+names(credit)
+
+new_credit=cbind(Income, Limit, Rating, Cards, Age, Education,gender_dummy, student_dummy, married_dummy, Balance )
+
+m1=apply(new_credit,2,mean) # Obtain sample means
+var1=apply(new_credit,2,var) # Obtain sample variance
+std1=apply(new_credit,2,stdev) # Obtain sample std dev
+summary=apply(new_credit,2,summary) # Obtain sample std dev
+
+
+cor1=cor(new_credit) # Obtain correlation matrix 
+cor1
+
+
+plot(Income,Balance)
+plot(Age, Income)
+plot(Age, Balance)
+plot(Rating, Limit)
+
+
+
+
+############################################################################################################################
+############################################################################################################################
+
+
+#######################  Multiple Regression Including All Predictors ######################################################
+
+
+
+####### Include all paramters ####################################################
+lm.fit2=lm(Balance~Income+Limit+Rating+Cards+Age+Education+gender_dummy+student_dummy+married_dummy )
+summary(lm.fit2)
+anova(lm.fit2)
+
+
+####### Exclude Limit as it is highly correlated to Rating  ####################################################
+lm.fit3=lm(Balance~Income+Limit+Cards+Age+Education+gender_dummy+student_dummy+married_dummy )
+summary(lm.fit3)
+
+
+
+
+#################################################################################################################
+
+#####       USE predict() function to estimate the predicted values y_hat   #####################################
+
+################################################################################################################# 
+
+yhat_lm=predict(lm.fit3)
+
+######### compare length of yhat_lm with the response variable Balance   ######################################## 
+lenght(yhat_lm)
+
+length(Balance)
+
+
+######### compare first six rows of yhat_lm with the response variable Balance   ################################ 
+
+head(yhat_lm)
+
+head(Balance)
+
+
+### MSE (mean-squared error) associated with the linear regression
+####  measures the accuracy of the estimated values compared to the observed or actual values
+####  measures the average squared difference between the estimated values and actual values
+
+
+mean((yhat_lm-Balance)^2)
+
+
+
+
+################  CLEAN UP THE DATA ##################################################################################
+################  WINSORIZE THE DATA   ###############################################################################
+#######  Winsorizing or winsorization is the transformation of statistics ############################################
+#######  by limiting extreme values in the statistical data to reduce the effect of possibly spurious outliers #######
+
+
+#### TRIM 1% on both tail ##########################################
+
+cut=0.01
+quantile(Income, 1 - cut, na.rm = T)
+quantile(Income, cut, na.rm = T)
+
+
+winsorize_x = function(x, cut = 0.01){
+  cut_point_top <- quantile(x, 1 - cut, na.rm = T)
+  cut_point_bottom <- quantile(x, cut, na.rm = T)
+  i = which(x >= cut_point_top) 
+  x[i] = cut_point_top
+  j = which(x <= cut_point_bottom) 
+  x[j] = cut_point_bottom
+  return(x)
+}
+
+Income_w=winsorize_x(Income)
+Limit_w=winsorize_x(Limit)
+Rating_w=winsorize_x(Rating)
+Cards_w=winsorize_x(Cards)
+Age_w=winsorize_x(Age)
+Education_w=winsorize_x(Education)
+Balance_w=winsorize_x(Balance)
+
+
+new_credit_w=cbind(Income_w, Limit_w, Rating_w, Cards_w, Age_w, Education_w,gender_dummy, student_dummy, married_dummy, Balance_w )
+summary_w=apply(new_credit_w,2,summary)
+
+
+### convert data new_credot_w (which is a matrix) to a dataframe 
+new_credit_df=as.data.frame(new_credit_w)
+
+
+lm.fit_w=lm(Balance_w~Income_w+Limit_w+Cards_w+Age_w+Education_w+gender_dummy+student_dummy+married_dummy, data=new_credit_df )
+summary(lm.fit_w)
+
+
+
+#### REMOVE OBSERVATIONS OF with BALANCE=0 ##########################################
+
+
+new_credit_w2<-new_credit_w[!(new_credit_df$Balance_w==0),]
+
+
+summary_w2=apply(new_credit_w2,2,summary)
+
+### convert data new_credot_w2 (which is a matrix) to a dataframe 
+new_credit_df2=as.data.frame(new_credit_w2)
+
+lm.fit_w=lm(Balance_w~Income_w+Limit_w+Cards_w+Age_w+Education_w+gender_dummy+student_dummy+married_dummy, data=new_credit_df2 )
+summary(lm.fit_w)
+
+
+
+
+
+#########################################################################################################
+#########################################################################################################
+
+
+
